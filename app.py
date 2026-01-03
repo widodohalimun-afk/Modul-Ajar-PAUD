@@ -5,7 +5,7 @@ import google.generativeai as genai
 # KONFIGURASI MASTER
 # ==========================================
 # Masukkan API Key AIza... Anda di sini
-API_KEY = "PASTE_KODE_AIza_ANDA_DI_SINI" 
+API_KEY = "AIzaSyCVj54iK7YyLPtczMv-k85QvzyBWfjDcH8" 
 genai.configure(api_key=API_KEY)
 
 # Pengaturan Tampilan Website
