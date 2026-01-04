@@ -4,111 +4,155 @@ from fpdf import FPDF
 import datetime
 
 # ==========================================
-# KONFIGURASI API KEY
+# 01. KONFIGURASI SISTEM & API
 # ==========================================
-API_KEY = "AIzaSyCVj54iK7YyLPtczMv-k85QvzyBWfjDcH8" 
+API_KEY = "PASTE_KODE_AIza_ANDA_DI_SINI" 
 genai.configure(api_key=API_KEY)
 
 # ==========================================
-# IDENTITAS SEKOLAH (KONFIGURASI TETAP)
+# 02. IDENTITAS SEKOLAH (DIKUNCI)
 # ==========================================
-NAMA_SEKOLAH = "TK ISLAM BAITUL INAYAH"
-ALAMAT_SEKOLAH = "Jl. Raya Baitul Inayah No. 01"
-KONTAK_SEKOLAH = "HP. 0812-xxxx-xxxx, Email: sekolah@inayah.com"
+# Sesuai dengan permintaan untuk identitas yang dikunci
+NAMA_SATUAN = "TK ISLAM BAITUL INAYAH"
+ALAMAT_SATUAN = "Jl. Raya Baitul Inayah No. 01"
+KOTA_SISTEM = "Jakarta"
 
 # ==========================================
-# FUNGSI PDF (FONT TIMES NEW ROMAN)
+# 03. FUNGSI CETAK PDF (GAYA TIMES NEW ROMAN)
 # ==========================================
-class PDF(FPDF):
+class IbischoolPDF(FPDF):
     def header(self):
         if self.page_no() == 1:
             self.set_font('Times', 'B', 14)
-            self.cell(0, 10, NAMA_SEKOLAH, ln=True, align='C')
+            self.cell(0, 10, NAMA_SATUAN.upper(), ln=True, align='C')
             self.set_font('Times', '', 10)
-            self.cell(0, 5, ALAMAT_SEKOLAH, ln=True, align='C')
-            self.cell(0, 5, KONTAK_SEKOLAH, ln=True, align='C')
+            self.cell(0, 5, ALAMAT_SATUAN, ln=True, align='C')
             self.line(10, 32, 200, 32)
             self.ln(10)
 
-def generate_pdf(text, filename):
-    pdf = PDF()
+def cetak_dokumen(konten, guru, ks, tgl_cetak):
+    pdf = IbischoolPDF()
     pdf.add_page()
     pdf.set_font("Times", size=11)
-    # Clean text for FPDF latin-1
-    clean_text = text.encode('latin-1', 'ignore').decode('latin-1')
-    pdf.multi_cell(0, 6, clean_text)
+    # Menghindari error karakter asing
+    text = konten.encode('latin-1', 'ignore').decode('latin-1')
+    pdf.multi_cell(0, 6, txt=text)
+    
+    # Tanda Tangan (Sig Container dari gaya HTML)
+    pdf.ln(20)
+    pdf.cell(0, 10, f"{tgl_cetak}", ln=True, align='R')
+    pdf.ln(5)
+    
+    y_pos = pdf.get_y()
+    pdf.set_font("Times", 'B', 11)
+    # Kolom Kiri: Kepala Sekolah
+    pdf.set_xy(10, y_pos)
+    pdf.cell(95, 5, "Mengesahkan,", 0, 1, 'C')
+    pdf.cell(95, 5, "Kepala Sekolah", 0, 1, 'C')
+    pdf.ln(15)
+    pdf.cell(95, 5, f"{ks.upper()}", 0, 1, 'C')
+    
+    # Kolom Kanan: Guru
+    pdf.set_xy(105, y_pos)
+    pdf.cell(95, 5, "", 0, 1, 'C')
+    pdf.cell(95, 5, "Guru Kelas", 0, 1, 'C')
+    pdf.ln(15)
+    pdf.set_xy(105, pdf.get_y())
+    pdf.cell(95, 5, f"{guru.upper()}", 0, 1, 'C')
+    
     return pdf.output(dest='S').encode('latin-1')
 
 # ==========================================
-# ANTARMUKA PENGGUNA (UI)
+# 04. ANTARMUKA INPUT (GAYA HTML MASTER)
 # ==========================================
-st.set_page_config(page_title="Generator Ibischool", layout="wide")
-st.title("📄 Ibischool Curriculum Generator (Edisi Komprehensif)")
+st.set_page_config(page_title="RKH Digital Ibischool Master", layout="wide")
 
+# Header Style
+st.markdown("<h1 style='text-align: center; color: #1e40af;'>RKH DIGITAL IBISCHOOL MASTER</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; font-size: 12px;'>Sistem Perancangan Pembelajaran PAUD Terpadu - Edisi Indonesia Premium</p>", unsafe_allow_html=True)
+
+# Sidebar (Identitas Dokumen & Lembaga)
 with st.sidebar:
-    st.header("⚙️ Pengaturan Dokumen")
-    judul = st.selectbox("Jenis Dokumen", ["Modul Ajar Kurikulum Merdeka", "Perancangan Pembelajaran Mendalam", "RPP Harian"])
+    st.header("01. Identitas Dokumen")
+    judul_pilihan = st.selectbox("Judul Dokumen", [
+        "Modul Pembelajaran Mendalam", 
+        "Rencana Pelaksanaan Pembelajaran Mendalam",
+        "Perancangan Pembelajaran Mendalam"
+    ])
     ta = st.text_input("Tahun Ajaran", "2025/2026")
-    guru = st.text_input("Nama Guru", "Widodo Halimun")
-    ks = st.text_input("Kepala Sekolah", "Siti Aminah, S.Pd")
+    tgl_full = st.text_input("Kota & Waktu", f"{KOTA_SISTEM}, {datetime.date.today().strftime('%d %B %Y')}")
+    
+    st.header("02. Identitas Pengesahan")
+    nama_ks = st.text_input("Nama Kepala Sekolah", "SITI AMINAH, S.Pd")
+    nama_guru = st.text_input("Nama Guru / Penulis", "WIDODO HALIMUN")
+    
     st.divider()
-    st.info("Sistem akan menyesuaikan output berdasarkan referensi dokumen standar PAUD Jateng/Ibischool.")
+    st.info(f"Database Terkunci: {NAMA_SATUAN}")
 
-col1, col2 = st.columns(2)
+# Kolom Utama (Identitas Modul)
+st.subheader("03. Identitas Modul & Pertemuan")
+col1, col2, col3 = st.columns(3)
+
 with col1:
-    topik = st.text_input("Topik Utama")
-    subtopik = st.text_input("Subtopik")
-    usia = st.selectbox("Jenjang/Usia", ["KB (2-3 Thn)", "KB (3-4 Thn)", "A (4-5 Thn)", "B (5-6 Thn)"])
-with col2:
-    hari = st.slider("Jumlah Hari", 1, 6, 5)
-    model_belajar = st.selectbox("Model Belajar", ["Inkuiri", "Loose Parts", "Project Based Learning", "Sentra"])
-    alokasi = st.text_input("Alokasi Waktu", "5 x 3 JP")
+    tema_besar = st.selectbox("Topik Utama (Tema P5/Intra)", [
+        "Diriku / Aku Istimewa", "Aku Sayang Bumi", "Aku Cinta Indonesia", 
+        "Lingkunganku", "Binatang", "Tanaman", "Kendaraan", "Alam Semesta"
+    ])
+    bingkai = st.selectbox("Bingkai Visual", ["Formal", "Alam (Pohon)", "Kendaraan", "Makanan", "Sekolah"])
 
-if st.button("🚀 GENERATE DOKUMEN SEKARANG"):
-    if not topik or not subtopik:
-        st.error("Isi Topik dan Subtopik terlebih dahulu!")
+with col2:
+    subtopik = st.text_input("Subtopik (Cth: Identitas Diriku)")
+    usia = st.selectbox("Kelompok Usia", ["KB (2-3 Thn)", "KB (3-4 Thn)", "A (4-5 Thn)", "B (5-6 Thn)"])
+
+with col3:
+    hari = st.slider("Jumlah Pertemuan (Hari)", 1, 6, 5)
+    model_belajar = st.selectbox("Model Belajar", ["Inkuiri", "Sentra", "Loose Parts", "PjBL", "Montessori"])
+
+# ==========================================
+# 05. LOGIKA GENERASI (MASTER PROMPT)
+# ==========================================
+if st.button("🚀 KEMBANGKAN PERENCANAAN LENGKAP"):
+    if not subtopik or API_KEY == "PASTE_KODE_AIza_ANDA_DI_SINI":
+        st.error("Lengkapi Subtopik dan pastikan API KEY sudah benar!")
     else:
-        with st.spinner("Sedang menyinkronkan data dengan standar Ibischool..."):
+        with st.spinner("Sistem Ibischool Sedang Menyelaraskan Perencanaan Master..."):
             try:
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
-                # MASTER PROMPT SESUAI REFERENSI DOKUMEN
-                prompt = f"""
-                Bertindaklah sebagai Pakar Pengembang Kurikulum PAUD Ibischool. 
-                Buatlah {judul} lengkap berdasarkan referensi struktur dokumen terbaru (Permendikdasmen No 13 Tahun 2025).
+                # Menggabungkan Master Prompt Anda dengan Referensi Dokumen
+                prompt_final = f"""
+                Gunakan peran sebagai Pakar Kurikulum PAUD Ibischool. 
+                Buatlah dokumen {judul_pilihan} yang sinkron dengan struktur Deep Learning.
 
-                DATA INPUT:
-                Sekolah: {NAMA_SEKOLAH}
-                Topik: {topik} | Subtopik: {subtopik}
-                Usia: {usia} | Hari: {hari} hari | Alokasi: {alokasi}
-                Model: {model_belajar} | Tahun Ajaran: {ta}
+                IDENTITAS:
+                Sekolah: {NAMA_SATUAN} | Tahun Ajaran: {ta} | Model: {model_belajar}
+                Topik: {tema_besar} | Subtopik: {subtopik} | Untuk {hari} hari.
 
-                STRUKTUR OUTPUT (WAJIB ADA):
-                1. KOP & IDENTITAS: Buat persis seperti dokumen referensi (Penulis, Semester, Fase, Minggu ke, dsb).
-                2. IDENTIFIKASI (Narasi): Buat narasi paragraf untuk Peserta Didik, Materi Pelajaran, dan Dimensi Profil Lulusan (sinkronkan dengan CP).
-                3. CAPAIAN PEMBELAJARAN (CP): Ambil elemen Nilai Agama & Budi Pekerti, Jati Diri, dan Dasar Literasi/STEAM yang relevan.
-                4. TUJUAN PEMBELAJARAN: List dengan penomoran.
-                5. MEDIA & APE: Daftar Alat dan Bahan (Loose Parts) dan penjelasan cara kerja APE.
-                6. KEGIATAN INTI: Buat rencana harian untuk {hari} hari. Sertakan Nama Kegiatan (Bold), Alat/Bahan, dan Langkah Pembelajaran mendetail per paragraf.
-                7. ASESMEN (Format Tabel/List): Sertakan format untuk Catatan Anekdot, Ceklis IKTP, dan Dokumentasi Hasil Karya.
-                8. PENGESAHAN: Tanda tangan Kepala Sekolah ({ks}) dan Guru ({guru}).
+                STRUKTUR WAJIB (GAYA DOKUMEN REFERENSI):
+                1. IDENTIFIKASI: Narasi mendalam (paragraf) tentang Peserta Didik, Materi Pelajaran, dan Dimensi Profil Pelajaran Pancasila (DPL).
+                2. DESAIN PEMBELAJARAN: Cantumkan CP sesuai Permendikdasmen No 13 Tahun 2025, Lintas Disiplin Ilmu, dan Tujuan Pembelajaran.
+                3. PENGALAMAN BELAJAR: Rincian {hari} hari dengan tahap AWAL, INTI, dan PENUTUP. 
+                   Setiap hari wajib ada: Nama Kegiatan (Bold), Alat & Bahan, dan Langkah Pembelajaran mendetail.
+                4. ASESMEN: Sertakan format Tabel Catatan Anekdot dan Ceklis IKTP (10 poin).
 
-                Gaya Bahasa: Formal, hangat, Times New Roman style, tanpa kata 'AI'.
+                ATURAN: Bahasa Indonesia formal, Times New Roman style, tanpa kata 'AI'.
                 """
-
-                response = model.generate_content(prompt)
-                hasil = response.text
                 
-                st.success("Berhasil! Silakan tinjau dan download.")
-                st.markdown(hasil)
+                response = model.generate_content(prompt_final)
+                hasil_teks = response.text
                 
-                # Tombol Download
-                pdf_data = generate_pdf(hasil, subtopik)
+                st.success("Perencanaan Master Berhasil Disusun!")
+                st.markdown(hasil_teks)
+                
+                # Download Section
+                pdf_bytes = cetak_dokumen(hasil_teks, nama_guru, nama_ks, tgl_full)
                 st.download_button(
-                    label="📥 Download PDF (Standar Ibischool)",
-                    data=pdf_data,
-                    file_name=f"Modul_{subtopik}.pdf",
+                    label="📥 UNDUH SEBAGAI PDF (MASTER IBISCHOOL)",
+                    data=pdf_bytes,
+                    file_name=f"RKH_Ibischool_{subtopik}.pdf",
                     mime="application/pdf"
                 )
+                
             except Exception as e:
-                st.error(f"Terjadi kesalahan: {e}")
+                st.error(f"Sistem Sibuk atau API Bermasalah: {e}")
+
