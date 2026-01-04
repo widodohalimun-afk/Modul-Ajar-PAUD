@@ -1,87 +1,114 @@
 import streamlit as st
 import google.generativeai as genai
+from fpdf import FPDF
+import datetime
 
 # ==========================================
-# KONFIGURASI MASTER
+# KONFIGURASI API KEY
 # ==========================================
-# Masukkan API Key AIza... Anda di sini
-API_KEY = "AIzaSyCVj54iK7YyLPtczMv-k85QvzyBWfjDcH8"
+API_KEY = "AIzaSyCVj54iK7YyLPtczMv-k85QvzyBWfjDcH8" 
 genai.configure(api_key=API_KEY)
 
-# Pengaturan Tampilan Website
-st.set_page_config(page_title="Master Generator Modul PAUD", layout="wide")
+# ==========================================
+# IDENTITAS SEKOLAH (KONFIGURASI TETAP)
+# ==========================================
+NAMA_SEKOLAH = "TK ISLAM BAITUL INAYAH"
+ALAMAT_SEKOLAH = "Jl. Raya Baitul Inayah No. 01"
+KONTAK_SEKOLAH = "HP. 0812-xxxx-xxxx, Email: sekolah@inayah.com"
 
-st.title("🚀 Master Generator Modul Ajar PAUD")
-st.info("Versi Master: Nama Guru & Sekolah dapat diubah secara dinamis.")
+# ==========================================
+# FUNGSI PDF (FONT TIMES NEW ROMAN)
+# ==========================================
+class PDF(FPDF):
+    def header(self):
+        if self.page_no() == 1:
+            self.set_font('Times', 'B', 14)
+            self.cell(0, 10, NAMA_SEKOLAH, ln=True, align='C')
+            self.set_font('Times', '', 10)
+            self.cell(0, 5, ALAMAT_SEKOLAH, ln=True, align='C')
+            self.cell(0, 5, KONTAK_SEKOLAH, ln=True, align='C')
+            self.line(10, 32, 200, 32)
+            self.ln(10)
 
-# BAGIAN INPUT IDENTITAS (Di Versi Master ini masih bisa diisi manual)
+def generate_pdf(text, filename):
+    pdf = PDF()
+    pdf.add_page()
+    pdf.set_font("Times", size=11)
+    # Clean text for FPDF latin-1
+    clean_text = text.encode('latin-1', 'ignore').decode('latin-1')
+    pdf.multi_cell(0, 6, clean_text)
+    return pdf.output(dest='S').encode('latin-1')
+
+# ==========================================
+# ANTARMUKA PENGGUNA (UI)
+# ==========================================
+st.set_page_config(page_title="Generator Ibischool", layout="wide")
+st.title("📄 Ibischool Curriculum Generator (Edisi Komprehensif)")
+
 with st.sidebar:
-    st.header("🔑 Lisensi & Pengesahan")
-    nama_user = st.text_input("Nama Guru/Penyusun", "Admin Master")
-    nama_sekolah = st.text_input("Nama Satuan PAUD", "TK Islam Baitul Inayah")
-    nama_ks = st.text_input("Nama Kepala Sekolah", "....................")
+    st.header("⚙️ Pengaturan Dokumen")
+    judul = st.selectbox("Jenis Dokumen", ["Modul Ajar Kurikulum Merdeka", "Perancangan Pembelajaran Mendalam", "RPP Harian"])
+    ta = st.text_input("Tahun Ajaran", "2025/2026")
+    guru = st.text_input("Nama Guru", "Widodo Halimun")
+    ks = st.text_input("Kepala Sekolah", "Siti Aminah, S.Pd")
     st.divider()
-    st.caption("Catatan: Di versi jual, bagian ini akan dikunci/dihilangkan.")
+    st.info("Sistem akan menyesuaikan output berdasarkan referensi dokumen standar PAUD Jateng/Ibischool.")
 
-# BAGIAN INPUT KONTEN MODUL
-with st.container():
-    col1, col2 = st.columns(2)
-    with col1:
-        topik = st.text_input("Topik Utama", placeholder="Contoh: Alam Semesta")
-        subtopik = st.text_input("Subtopik", placeholder="Contoh: Bintang di Langit")
-        model_belajar = st.selectbox("Model Belajar", ["Play Based Learning", "Project Based Learning", "Inquiry Based Learning"])
-    
-    with col2:
-        hari = st.slider("Jumlah Pertemuan (Hari)", 1, 6, 1)
-        waktu = st.text_input("Alokasi Waktu", "08.00 - 10.30 WIB")
+col1, col2 = st.columns(2)
+with col1:
+    topik = st.text_input("Topik Utama")
+    subtopik = st.text_input("Subtopik")
+    usia = st.selectbox("Jenjang/Usia", ["KB (2-3 Thn)", "KB (3-4 Thn)", "A (4-5 Thn)", "B (5-6 Thn)"])
+with col2:
+    hari = st.slider("Jumlah Hari", 1, 6, 5)
+    model_belajar = st.selectbox("Model Belajar", ["Inkuiri", "Loose Parts", "Project Based Learning", "Sentra"])
+    alokasi = st.text_input("Alokasi Waktu", "5 x 3 JP")
 
-# TOMBOL GENERATE
-if st.button("BUAT MODUL SEKARANG"):
+if st.button("🚀 GENERATE DOKUMEN SEKARANG"):
     if not topik or not subtopik:
-        st.warning("Mohon isi Topik dan Subtopik!")
+        st.error("Isi Topik dan Subtopik terlebih dahulu!")
     else:
-        with st.spinner("Sedang memproses modul sesuai standar Pakar PAUD..."):
+        with st.spinner("Sedang menyinkronkan data dengan standar Ibischool..."):
             try:
-                model_ai = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
-                # PROMPT RAHASIA ANDA (Sudah Terintegrasi)
-                prompt_full = f"""
-                SYSTEM PROMPT: GENERATOR MODUL AJAR PAUD
-                PERAN: Anda adalah seorang Pakar Pengembang Kurikulum PAUD (Fase Fondasi) di Indonesia dengan spesialisasi pada Pembelajaran Mendalam (Deep Learning), Berkesadaran (Mindfulness), dan Bermakna.
+                # MASTER PROMPT SESUAI REFERENSI DOKUMEN
+                prompt = f"""
+                Bertindaklah sebagai Pakar Pengembang Kurikulum PAUD Ibischool. 
+                Buatlah {judul} lengkap berdasarkan referensi struktur dokumen terbaru (Permendikdasmen No 13 Tahun 2025).
 
-                INSTRUKSI UTAMA:
-                Buatlah konten rencana pembelajaran yang komprehensif berdasarkan data input:
-                Topik Utama: {topik}
-                Subtopik: {subtopik}
-                Model Belajar: {model_belajar}
-                Jumlah Pertemuan: {hari} Hari
-                Alokasi Waktu: {waktu}
+                DATA INPUT:
+                Sekolah: {NAMA_SEKOLAH}
+                Topik: {topik} | Subtopik: {subtopik}
+                Usia: {usia} | Hari: {hari} hari | Alokasi: {alokasi}
+                Model: {model_belajar} | Tahun Ajaran: {ta}
 
-                KETENTUAN FORMAT OUTPUT (WAJIB DIPATUHI):
-                GAYA BAHASA: Formal, edukatif, namun hangat (khas PAUD).
-                FORMAT NARASI (PARAGRAF): Wajib pada Identifikasi Peserta Didik, Materi Pelajaran, Capaian Pembelajaran, Lintas Disiplin Ilmu, Topik Pembelajaran, Praktik Pedagogis.
-                FORMAT PENOMORAN: Wajib pada Dimensi Profil Lulusan, Tujuan Pembelajaran, Langkah Inti.
+                STRUKTUR OUTPUT (WAJIB ADA):
+                1. KOP & IDENTITAS: Buat persis seperti dokumen referensi (Penulis, Semester, Fase, Minggu ke, dsb).
+                2. IDENTIFIKASI (Narasi): Buat narasi paragraf untuk Peserta Didik, Materi Pelajaran, dan Dimensi Profil Lulusan (sinkronkan dengan CP).
+                3. CAPAIAN PEMBELAJARAN (CP): Ambil elemen Nilai Agama & Budi Pekerti, Jati Diri, dan Dasar Literasi/STEAM yang relevan.
+                4. TUJUAN PEMBELAJARAN: List dengan penomoran.
+                5. MEDIA & APE: Daftar Alat dan Bahan (Loose Parts) dan penjelasan cara kerja APE.
+                6. KEGIATAN INTI: Buat rencana harian untuk {hari} hari. Sertakan Nama Kegiatan (Bold), Alat/Bahan, dan Langkah Pembelajaran mendetail per paragraf.
+                7. ASESMEN (Format Tabel/List): Sertakan format untuk Catatan Anekdot, Ceklis IKTP, dan Dokumentasi Hasil Karya.
+                8. PENGESAHAN: Tanda tangan Kepala Sekolah ({ks}) dan Guru ({guru}).
 
-                STRUKTUR KONTEN:
-                1. SEKSI IDENTIFIKASI & MEDIA (BAGIAN A)
-                2. SEKSI DESAIN PEMBELAJARAN (BAGIAN B)
-                3. SEKSI PENGALAMAN BELAJAR (BAGIAN C)
-                4. LAMPIRAN ASESMEN (10 IKTP)
-
-                PENGESAHAN:
-                Tuliskan di bagian akhir:
-                Mengetahui,
-                Kepala Sekolah: {nama_ks}
-                Guru Kelas: {nama_user}
-                Satuan PAUD: {nama_sekolah}
-
-                CATATAN: Jangan sebut kata 'AI' atau 'Generator' di hasil akhir.
+                Gaya Bahasa: Formal, hangat, Times New Roman style, tanpa kata 'AI'.
                 """
 
-                response = model_ai.generate_content(prompt_full)
-                st.success("Modul Berhasil Dibuat!")
-                st.markdown("---")
-                st.markdown(response.text)
+                response = model.generate_content(prompt)
+                hasil = response.text
                 
+                st.success("Berhasil! Silakan tinjau dan download.")
+                st.markdown(hasil)
+                
+                # Tombol Download
+                pdf_data = generate_pdf(hasil, subtopik)
+                st.download_button(
+                    label="📥 Download PDF (Standar Ibischool)",
+                    data=pdf_data,
+                    file_name=f"Modul_{subtopik}.pdf",
+                    mime="application/pdf"
+                )
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Terjadi kesalahan: {e}")
